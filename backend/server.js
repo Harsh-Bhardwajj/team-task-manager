@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 
-// 🔥 CORS FIX (FINAL)
+// ✅ CORS FIX (ENOUGH)
 app.use(
   cors({
     origin: "*",
@@ -19,9 +19,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-
-// 🔥 Handle preflight requests (IMPORTANT)
-app.options("*", cors());
 
 // middleware
 app.use(express.json());
@@ -36,14 +33,12 @@ app.get("/", (req, res) => {
   res.send("API running 🚀");
 });
 
-// PORT (Railway compatible)
 const PORT = process.env.PORT || 5000;
 
-// DB + server start
 const startServer = async () => {
   try {
     if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI missing in .env ❌");
+      throw new Error("MONGO_URI missing ❌");
     }
 
     await mongoose.connect(process.env.MONGO_URI);
