@@ -2,17 +2,24 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// 🎟️ Helper function to generate token (DRY principle)
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET || "secret123",
+    { expiresIn: "1d" },
+  );
+};
+
 // 🔐 SIGNUP
 export const signup = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // ❌ validation
     if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        msg: "All fields are required",
-      });
+      return res
+        .status(400)
+        .json({ success: false, msg: "All fields are required" });
     }
 
     if (password.length < 6) {
@@ -22,16 +29,13 @@ export const signup = async (req, res) => {
       });
     }
 
-    // ❌ check existing user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        msg: "User already exists",
-      });
+      return res
+        .status(400)
+        .json({ success: false, msg: "User already exists" });
     }
 
-    // 🔒 hash password
     const hashed = await bcrypt.hash(password, 10);
 
     const user = await User.create({
@@ -41,16 +45,23 @@ export const signup = async (req, res) => {
       role: role || "member",
     });
 
+    // ⚡ FIX: Signup ke baad bhi token bhejo taaki user direct dashboard dekh sake
+    const token = generateToken(user);
+
     res.status(201).json({
       success: true,
       msg: "Signup successful",
+      token, // ✅ Frontend ab isse login state set kar lega
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (err) {
     console.error("Signup Error:", err.message);
-    res.status(500).json({
-      success: false,
-      msg: "Signup error",
-    });
+    res.status(500).json({ success: false, msg: "Signup error" });
   }
 };
 
@@ -59,42 +70,27 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ❌ validation
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        msg: "All fields required",
-      });
+      return res
+        .status(400)
+        .json({ success: false, msg: "All fields required" });
     }
 
-    // ❌ check user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({
-        success: false,
-        msg: "User not found",
-      });
+      return res.status(400).json({ success: false, msg: "User not found" });
     }
 
-    // 🔑 password check
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        msg: "Wrong password",
-      });
+      return res.status(400).json({ success: false, msg: "Wrong password" });
     }
 
-    // 🎟️ token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || "secret123",
-      { expiresIn: "1d" },
-    );
+    const token = generateToken(user);
 
     res.json({
       success: true,
-      token, // ✅ frontend expects this
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -104,9 +100,6 @@ export const login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login Error:", err.message);
-    res.status(500).json({
-      success: false,
-      msg: "Login error",
-    });
+    res.status(500).json({ success: false, msg: "Login error" });
   }
 };
