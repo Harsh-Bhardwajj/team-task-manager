@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import API from "./api";
 
 export default function App() {
-  const [isLoginView, setIsLoginView] = useState(true); // Toggle between Login/Signup
+  const [isLoginView, setIsLoginView] = useState(true);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -16,7 +16,7 @@ export default function App() {
 
   const handleAuth = async (e) => {
     e.preventDefault();
-    const endpoint = isLoginView ? "/auth/login" : "/auth/signup"; // Fix here
+    const endpoint = isLoginView ? "/auth/login" : "/auth/signup";
     try {
       const res = await API.post(endpoint, form);
       if (res.data.token) {
@@ -25,7 +25,7 @@ export default function App() {
         setIsLoggedIn(true);
       } else if (!isLoginView) {
         alert("Signup Successful! Ab login kijiye.");
-        setIsLoginView(true); // Signup ke baad login screen pe bhej dega
+        setIsLoginView(true);
       }
     } catch (err) {
       alert(err.response?.data?.msg || "Authentication failed!");
@@ -37,7 +37,7 @@ export default function App() {
       const res = await API.get("/tasks");
       setTasks(res.data.data || res.data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Tasks Error:", err);
     }
   };
 
@@ -46,7 +46,7 @@ export default function App() {
       const res = await API.get("/users");
       setUsers(res.data.data || res.data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Users Error:", err);
     }
   };
 
@@ -57,10 +57,14 @@ export default function App() {
       if (user?.role === "admin") fetchUsers();
     }
   }, [isLoggedIn]);
-  const deleteTask = async (id) => {
-    await API.delete(`/tasks/${id}`);
 
-    fetchTasks();
+  const deleteTask = async (id) => {
+    try {
+      await API.delete(`/tasks/${id}`);
+      fetchTasks();
+    } catch (err) {
+      console.error("Delete Error:", err);
+    }
   };
 
   const logout = () => {
@@ -69,7 +73,6 @@ export default function App() {
     setTasks([]);
   };
 
-  // Styles Object
   const styles = {
     container: {
       fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
@@ -222,7 +225,7 @@ export default function App() {
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
             >
-              <option value="">Assign To</option>
+              <option value="">Assign To Self</option>
               {users?.map((u) => (
                 <option key={u._id} value={u._id}>
                   {u.name || u.email}
@@ -231,14 +234,21 @@ export default function App() {
             </select>
             <button
               onClick={async () => {
-                if (!title) return alert("Title is required");
-                const user = JSON.parse(localStorage.getItem("user"));
-                await API.post("/tasks", {
-                  title,
-                  assignedTo: assignedTo || user.id,
-                });
-                setTitle("");
-                fetchTasks();
+                if (!title.trim()) return alert("Title is required");
+                try {
+                  const taskBody = { title: title.trim() };
+                  // Agar user select kiya hai tabhi bhejenge, warna backend khud handle karega
+                  if (assignedTo) taskBody.assignedTo = assignedTo;
+
+                  await API.post("/tasks", taskBody);
+                  setTitle("");
+                  setAssignedTo("");
+                  fetchTasks();
+                } catch (err) {
+                  alert(
+                    err.response?.data?.msg || "Error adding task. Check logs.",
+                  );
+                }
               }}
               style={{ ...styles.button, width: "auto" }}
             >
@@ -265,10 +275,7 @@ export default function App() {
                   </p>
                 </div>
                 <button
-                  onClick={async () => {
-                    await API.delete(`/tasks/${t._id}`);
-                    fetchTasks();
-                  }}
+                  onClick={() => deleteTask(t._id)}
                   style={{
                     ...styles.button,
                     width: "auto",
@@ -276,7 +283,7 @@ export default function App() {
                     color: "#000",
                   }}
                 >
-                  Done
+                  Done / Delete
                 </button>
               </div>
             ))
