@@ -1,8 +1,10 @@
 import axios from "axios";
 
-// 🔗 Backend base URL
+// 🔗 Dynamic base URL (DEV + PROD)
 const API = axios.create({
-  baseURL: "http://localhost:5000/api", // ⚠️ deploy ke time change hoga
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    "https://team-task-manager-production-dc9c.up.railway.app/api",
 });
 
 // 🔐 Attach token automatically

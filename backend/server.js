@@ -10,32 +10,41 @@ dotenv.config();
 
 const app = express();
 
-// middleware
-app.use(cors());
+// ✅ middleware
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// routes
+// ✅ routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/users", userRoutes);
 
-// test route
+// ✅ test route
 app.get("/", (req, res) => {
   res.send("API running 🚀");
 });
 
-// ✅ PORT fix (Railway compatible)
+// ✅ PORT (Railway compatible)
 const PORT = process.env.PORT || 5000;
 
-// ✅ MongoDB from ENV (VERY IMPORTANT)
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB connected");
-  })
-  .catch((err) => console.log(err));
+// ✅ MongoDB connect + server start
+const startServer = async () => {
+  try {
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI missing in .env ❌");
+    }
 
-// ✅ server start (IMPORTANT change)
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    await mongoose.connect(process.env.MONGO_URI);
+
+    console.log("MongoDB connected ✅");
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT} 🚀`);
+    });
+  } catch (err) {
+    console.error("Server failed ❌:", err.message);
+    process.exit(1);
+  }
+};
+
+startServer();
