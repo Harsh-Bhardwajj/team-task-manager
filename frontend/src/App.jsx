@@ -28,10 +28,26 @@ export default function App() {
 
     try {
       const res = await API.post("/auth/login", form);
-      localStorage.setItem("token", res.data.token);
+
+      console.log("Login Response:", res.data);
+
+      const token = res.data.token || res.data.data?.token;
+
+      if (!token) {
+        throw new Error("Token not received");
+      }
+
+      localStorage.setItem("token", token);
       setIsLoggedIn(true);
     } catch (err) {
-      setError(err.response?.data?.msg || "Login failed");
+      console.log("Login Error:", err.response?.data || err.message);
+
+      setError(
+        err.response?.data?.msg ||
+          err.response?.data?.message ||
+          err.message ||
+          "Login failed ❌",
+      );
     } finally {
       setLoading(false);
     }
@@ -55,7 +71,7 @@ export default function App() {
         role: "admin",
       });
 
-      alert("Signup successful ✅");
+      alert("Signup successful ✅ Now login");
     } catch (err) {
       setError(err.response?.data?.msg || "Signup failed");
     } finally {
@@ -116,7 +132,7 @@ export default function App() {
     try {
       await API.put(`/tasks/${id}`, { status: "done" });
 
-      // 🔥 auto delete
+      // auto delete after done
       await API.delete(`/tasks/${id}`);
 
       fetchTasks();

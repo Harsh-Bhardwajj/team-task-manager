@@ -9,19 +9,26 @@ export const signup = async (req, res) => {
 
     // ❌ validation
     if (!name || !email || !password) {
-      return res.status(400).json({ msg: "All fields are required" });
+      return res.status(400).json({
+        success: false,
+        msg: "All fields are required",
+      });
     }
 
     if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ msg: "Password must be at least 6 characters" });
+      return res.status(400).json({
+        success: false,
+        msg: "Password must be at least 6 characters",
+      });
     }
 
     // ❌ check existing user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ msg: "User already exists" });
+      return res.status(400).json({
+        success: false,
+        msg: "User already exists",
+      });
     }
 
     // 🔒 hash password
@@ -36,10 +43,14 @@ export const signup = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      msg: "User created successfully",
+      msg: "Signup successful",
     });
   } catch (err) {
-    res.status(500).json({ msg: "Signup error" });
+    console.error("Signup Error:", err.message);
+    res.status(500).json({
+      success: false,
+      msg: "Signup error",
+    });
   }
 };
 
@@ -50,19 +61,28 @@ export const login = async (req, res) => {
 
     // ❌ validation
     if (!email || !password) {
-      return res.status(400).json({ msg: "All fields required" });
+      return res.status(400).json({
+        success: false,
+        msg: "All fields required",
+      });
     }
 
     // ❌ check user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ msg: "User not found" });
+      return res.status(400).json({
+        success: false,
+        msg: "User not found",
+      });
     }
 
     // 🔑 password check
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ msg: "Wrong password" });
+      return res.status(400).json({
+        success: false,
+        msg: "Wrong password",
+      });
     }
 
     // 🎟️ token
@@ -74,7 +94,7 @@ export const login = async (req, res) => {
 
     res.json({
       success: true,
-      token,
+      token, // ✅ frontend expects this
       user: {
         id: user._id,
         name: user.name,
@@ -83,6 +103,10 @@ export const login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ msg: "Login error" });
+    console.error("Login Error:", err.message);
+    res.status(500).json({
+      success: false,
+      msg: "Login error",
+    });
   }
 };
