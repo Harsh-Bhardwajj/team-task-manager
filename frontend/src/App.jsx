@@ -16,13 +16,16 @@ export default function App() {
 
   const handleAuth = async (e) => {
     e.preventDefault();
-    const endpoint = isLoginView ? "/auth/login" : "/auth/register";
+    const endpoint = isLoginView ? "/auth/login" : "/auth/signup"; // Fix here
     try {
       const res = await API.post(endpoint, form);
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
         setIsLoggedIn(true);
+      } else if (!isLoginView) {
+        alert("Signup Successful! Ab login kijiye.");
+        setIsLoginView(true); // Signup ke baad login screen pe bhej dega
       }
     } catch (err) {
       alert(err.response?.data?.msg || "Authentication failed!");
