@@ -4,17 +4,20 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// 🔒 CREATE TASK (Admin only)
+// 🔒 CREATE TASK
 router.post("/", protect, async (req, res) => {
   try {
     const { title, status, assignedTo } = req.body;
 
-    if (!title) {
-      return res.status(400).json({ msg: "Title is required" });
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        msg: "Title is required",
+      });
     }
 
     const task = await Task.create({
-      title,
+      title: title.trim(),
       status: status || "todo",
       assignedTo: assignedTo || req.user.id,
       createdBy: req.user.id,
@@ -25,7 +28,10 @@ router.post("/", protect, async (req, res) => {
       data: task,
     });
   } catch (err) {
-    res.status(500).json({ msg: "Error creating task" });
+    res.status(500).json({
+      success: false,
+      msg: "Error creating task",
+    });
   }
 });
 
@@ -37,11 +43,14 @@ router.get("/", protect, async (req, res) => {
     if (req.user.role === "admin") {
       tasks = await Task.find()
         .populate("assignedTo", "name email")
-        .populate("createdBy", "name email");
+        .populate("createdBy", "name email")
+        .sort({ createdAt: -1 }); // 🔥 latest first
     } else {
       tasks = await Task.find({
         assignedTo: req.user.id,
-      }).populate("assignedTo", "name email");
+      })
+        .populate("assignedTo", "name email")
+        .sort({ createdAt: -1 });
     }
 
     res.json({
@@ -50,7 +59,10 @@ router.get("/", protect, async (req, res) => {
       data: tasks,
     });
   } catch (err) {
-    res.status(500).json({ msg: "Error fetching tasks" });
+    res.status(500).json({
+      success: false,
+      msg: "Error fetching tasks",
+    });
   }
 });
 
@@ -69,7 +81,10 @@ router.put("/:id", protect, async (req, res) => {
     );
 
     if (!task) {
-      return res.status(404).json({ msg: "Task not found" });
+      return res.status(404).json({
+        success: false,
+        msg: "Task not found",
+      });
     }
 
     res.json({
@@ -77,7 +92,10 @@ router.put("/:id", protect, async (req, res) => {
       data: task,
     });
   } catch (err) {
-    res.status(500).json({ msg: "Error updating task" });
+    res.status(500).json({
+      success: false,
+      msg: "Error updating task",
+    });
   }
 });
 
@@ -89,7 +107,6 @@ router.delete("/:id", protect, async (req, res) => {
     if (req.user.role === "admin") {
       task = await Task.findByIdAndDelete(req.params.id);
     } else {
-      // 👤 member can delete only their own task
       task = await Task.findOneAndDelete({
         _id: req.params.id,
         assignedTo: req.user.id,
@@ -97,7 +114,10 @@ router.delete("/:id", protect, async (req, res) => {
     }
 
     if (!task) {
-      return res.status(404).json({ msg: "Task not found or not allowed" });
+      return res.status(404).json({
+        success: false,
+        msg: "Task not found or not allowed",
+      });
     }
 
     res.json({
@@ -105,7 +125,10 @@ router.delete("/:id", protect, async (req, res) => {
       msg: "Task deleted",
     });
   } catch (err) {
-    res.status(500).json({ msg: "Error deleting task" });
+    res.status(500).json({
+      success: false,
+      msg: "Error deleting task",
+    });
   }
 });
 
