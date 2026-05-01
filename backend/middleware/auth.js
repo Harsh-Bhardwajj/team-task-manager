@@ -1,46 +1,35 @@
 import jwt from "jsonwebtoken";
 
-// 🔐 Protect route
 export const protect = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ msg: "No token, access denied" });
     }
 
-    // ✅ Bearer token split
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : authHeader;
-
-    if (!token) {
-      return res.status(401).json({ msg: "Token format invalid" });
-    }
+    const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret123");
 
-    // ⚡ FIX: Ensure req.user has an 'id' property
+    // Fix: mapping _id to id
     req.user = {
       ...decoded,
       id: decoded.id || decoded._id,
     };
 
-    // 🛡️ Safety: Check if id actually exists before moving next
     if (!req.user.id) {
-      throw new Error("Token does not contain user ID");
+      return res.status(401).json({ msg: "Invalid token payload" });
     }
 
-    next(); // <--- Ye call hona zaroori hai
+    next();
   } catch (err) {
     console.error("Auth Middleware Error:", err.message);
     return res.status(401).json({ msg: "Invalid or expired token" });
   }
 };
 
-// 👑 Admin only
 export const adminOnly = (req, res, next) => {
-  // Safe check
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ msg: "Admin only access" });
   }

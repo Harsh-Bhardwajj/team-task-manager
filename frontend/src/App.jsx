@@ -10,10 +10,13 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
 
+  // Check login status on load
   useEffect(() => {
-    if (localStorage.getItem("token")) setIsLoggedIn(true);
+    const token = localStorage.getItem("token");
+    if (token) setIsLoggedIn(true);
   }, []);
 
+  // Auth Handler (Login/Signup)
   const handleAuth = async (e) => {
     e.preventDefault();
     const endpoint = isLoginView ? "/auth/login" : "/auth/signup";
@@ -32,19 +35,21 @@ export default function App() {
     }
   };
 
+  // Fetch Tasks
   const fetchTasks = async () => {
     try {
       const res = await API.get("/tasks");
-      setTasks(res.data.data || res.data || []);
+      setTasks(res.data.data || []);
     } catch (err) {
       console.error("Fetch Tasks Error:", err);
     }
   };
 
+  // Fetch Users (Only for Admins)
   const fetchUsers = async () => {
     try {
       const res = await API.get("/users");
-      setUsers(res.data.data || res.data || []);
+      setUsers(res.data.data || []);
     } catch (err) {
       console.error("Fetch Users Error:", err);
     }
@@ -58,12 +63,35 @@ export default function App() {
     }
   }, [isLoggedIn]);
 
+  // Add Task Logic
+  const handleAddTask = async () => {
+    if (!title.trim()) return alert("Please enter a task title");
+
+    try {
+      const taskBody = { title: title.trim() };
+      // Agar assignedTo select nahi hai, toh backend logged-in user ko assign karega
+      if (assignedTo) taskBody.assignedTo = assignedTo;
+
+      await API.post("/tasks", taskBody);
+      setTitle("");
+      setAssignedTo("");
+      fetchTasks();
+      alert("Task Added Successfully!");
+    } catch (err) {
+      console.error("Add Task Error:", err.response?.data);
+      alert(
+        err.response?.data?.msg || "Failed to add task (Check Backend Logs)",
+      );
+    }
+  };
+
+  // Delete Task
   const deleteTask = async (id) => {
     try {
       await API.delete(`/tasks/${id}`);
       fetchTasks();
     } catch (err) {
-      console.error("Delete Error:", err);
+      alert("Error deleting task");
     }
   };
 
@@ -75,7 +103,7 @@ export default function App() {
 
   const styles = {
     container: {
-      fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
+      fontFamily: "Segoe UI, sans-serif",
       backgroundColor: "#f4f7f6",
       minHeight: "100vh",
       display: "flex",
@@ -84,7 +112,7 @@ export default function App() {
     },
     card: {
       backgroundColor: "#fff",
-      padding: "40px",
+      padding: "30px",
       borderRadius: "12px",
       boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
       width: "100%",
@@ -128,6 +156,7 @@ export default function App() {
       marginBottom: "10px",
       display: "flex",
       justifyContent: "space-between",
+      alignItems: "center",
       boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
     },
   };
@@ -226,30 +255,14 @@ export default function App() {
               onChange={(e) => setAssignedTo(e.target.value)}
             >
               <option value="">Assign To Self</option>
-              {users?.map((u) => (
+              {users.map((u) => (
                 <option key={u._id} value={u._id}>
                   {u.name || u.email}
                 </option>
               ))}
             </select>
             <button
-              onClick={async () => {
-                if (!title.trim()) return alert("Title is required");
-                try {
-                  const taskBody = { title: title.trim() };
-                  // Agar user select kiya hai tabhi bhejenge, warna backend khud handle karega
-                  if (assignedTo) taskBody.assignedTo = assignedTo;
-
-                  await API.post("/tasks", taskBody);
-                  setTitle("");
-                  setAssignedTo("");
-                  fetchTasks();
-                } catch (err) {
-                  alert(
-                    err.response?.data?.msg || "Error adding task. Check logs.",
-                  );
-                }
-              }}
+              onClick={handleAddTask}
               style={{ ...styles.button, width: "auto" }}
             >
               Add
@@ -268,10 +281,11 @@ export default function App() {
                     style={{
                       margin: "5px 0 0",
                       color: "#666",
-                      fontSize: "0.9rem",
+                      fontSize: "0.8rem",
                     }}
                   >
-                    Status: {t.status}
+                    Assigned to: {t.assignedTo?.name || "Me"} | Status:{" "}
+                    {t.status}
                   </p>
                 </div>
                 <button
@@ -283,7 +297,7 @@ export default function App() {
                     color: "#000",
                   }}
                 >
-                  Done / Delete
+                  Done
                 </button>
               </div>
             ))
