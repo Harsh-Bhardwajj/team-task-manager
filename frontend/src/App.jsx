@@ -2,310 +2,285 @@ import { useState, useEffect } from "react";
 import API from "./api";
 
 export default function App() {
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
-
+  const [isLoginView, setIsLoginView] = useState(true); // Toggle between Login/Signup
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [tasks, setTasks] = useState([]);
-  const [title, setTitle] = useState("");
-
   const [users, setUsers] = useState([]);
+  const [title, setTitle] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
 
-  const [filter, setFilter] = useState("all");
+  useEffect(() => {
+    if (localStorage.getItem("token")) setIsLoggedIn(true);
+  }, []);
 
-  // 🔐 LOGIN
-  const handleLogin = async () => {
-    if (!form.email.trim() || !form.password.trim()) {
-      setError("Please fill all fields ❗");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    const endpoint = isLoginView ? "/auth/login" : "/auth/register";
     try {
-      const res = await API.post("/auth/login", form);
-
-      console.log("Login Response:", res.data);
-
-      const token = res.data.token || res.data.data?.token;
-
-      if (!token) {
-        throw new Error("Token not received");
+      const res = await API.post(endpoint, form);
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        setIsLoggedIn(true);
       }
-
-      localStorage.setItem("token", token);
-      setIsLoggedIn(true);
     } catch (err) {
-      console.log("Login Error:", err.response?.data || err.message);
-
-      setError(
-        err.response?.data?.msg ||
-          err.response?.data?.message ||
-          err.message ||
-          "Login failed ❌",
-      );
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.msg || "Authentication failed!");
     }
   };
 
-  // 🆕 SIGNUP
-  const handleSignup = async () => {
-    if (!form.email.trim() || !form.password.trim()) {
-      setError("Please fill all fields ❗");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      await API.post("/auth/signup", {
-        name: "Test User",
-        email: form.email,
-        password: form.password,
-        role: "admin",
-      });
-
-      alert("Signup successful ✅ Now login");
-    } catch (err) {
-      setError(err.response?.data?.msg || "Signup failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🔄 Fetch tasks
   const fetchTasks = async () => {
-    const res = await API.get("/tasks");
-    setTasks(res.data.data || []);
+    try {
+      const res = await API.get("/tasks");
+      setTasks(res.data.data || res.data || []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // 👤 Fetch users
   const fetchUsers = async () => {
     try {
       const res = await API.get("/users");
-      setUsers(res.data.data || []);
+      setUsers(res.data.data || res.data || []);
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
   useEffect(() => {
     if (isLoggedIn) {
       fetchTasks();
-      fetchUsers();
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (user?.role === "admin") fetchUsers();
     }
   }, [isLoggedIn]);
+  const deleteTask = async (id) => {
+    await API.delete(`/tasks/${id}`);
 
-  // ➕ Create task
-  const createTask = async () => {
-    if (!title.trim()) return;
-
-    await API.post("/tasks", {
-      title,
-      status: "todo",
-      assignedTo,
-    });
-
-    setTitle("");
-    setAssignedTo("");
     fetchTasks();
   };
 
-  // ❌ DELETE TASK
-  const deleteTask = async (id) => {
-    try {
-      await API.delete(`/tasks/${id}`);
-      fetchTasks();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  // ✅ UPDATE + AUTO DELETE
-  const updateStatus = async (id) => {
-    try {
-      await API.put(`/tasks/${id}`, { status: "done" });
-
-      // auto delete after done
-      await API.delete(`/tasks/${id}`);
-
-      fetchTasks();
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  // 🚪 Logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const logout = () => {
+    localStorage.clear();
     setIsLoggedIn(false);
+    setTasks([]);
   };
 
-  // 📊 Stats
-  const total = tasks?.length || 0;
-  const completed = tasks?.filter((t) => t.status === "done").length || 0;
-  const pending = tasks?.filter((t) => t.status !== "done").length || 0;
+  // Styles Object
+  const styles = {
+    container: {
+      fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
+      backgroundColor: "#f4f7f6",
+      minHeight: "100vh",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    card: {
+      backgroundColor: "#fff",
+      padding: "40px",
+      borderRadius: "12px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+      width: "100%",
+      maxWidth: "400px",
+      textAlign: "center",
+    },
+    input: {
+      width: "100%",
+      padding: "12px",
+      marginBottom: "15px",
+      borderRadius: "6px",
+      border: "1px solid #ddd",
+      boxSizing: "border-box",
+    },
+    button: {
+      width: "100%",
+      padding: "12px",
+      backgroundColor: "#007bff",
+      color: "#fff",
+      border: "none",
+      borderRadius: "6px",
+      cursor: "pointer",
+      fontWeight: "bold",
+    },
+    link: {
+      color: "#007bff",
+      cursor: "pointer",
+      marginTop: "15px",
+      display: "inline-block",
+    },
+    dashboard: {
+      padding: "20px",
+      maxWidth: "900px",
+      margin: "0 auto",
+      width: "100%",
+    },
+    taskItem: {
+      backgroundColor: "#fff",
+      padding: "15px",
+      borderRadius: "8px",
+      marginBottom: "10px",
+      display: "flex",
+      justifyContent: "space-between",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+    },
+  };
 
-  // 🔍 Filter
-  const filteredTasks =
-    tasks?.filter((t) => {
-      if (filter === "all") return true;
-      return t.status === filter;
-    }) || [];
-
-  // 🔁 LOGIN UI
   if (!isLoggedIn) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-2xl shadow-lg w-96">
-          <h2 className="text-2xl font-bold text-center mb-6">
-            Team Task Manager
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <h2 style={{ marginBottom: "20px" }}>
+            {isLoginView ? "Welcome Back" : "Create Account"}
           </h2>
-
-          {error && (
-            <p className="text-red-500 text-sm mb-3 text-center">{error}</p>
-          )}
-
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full mb-3 p-3 border rounded-lg"
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full mb-4 p-3 border rounded-lg"
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-
-          <button
-            onClick={handleLogin}
-            className="w-full bg-blue-500 text-white py-3 rounded-lg mb-2"
+          <form onSubmit={handleAuth}>
+            {!isLoginView && (
+              <input
+                type="text"
+                placeholder="Full Name"
+                required
+                style={styles.input}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            )}
+            <input
+              type="email"
+              placeholder="Email"
+              required
+              style={styles.input}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              required
+              style={styles.input}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            <button type="submit" style={styles.button}>
+              {isLoginView ? "Login" : "Sign Up"}
+            </button>
+          </form>
+          <span
+            style={styles.link}
+            onClick={() => setIsLoginView(!isLoginView)}
           >
-            {loading ? "Processing..." : "Login"}
-          </button>
-
-          <button
-            onClick={handleSignup}
-            className="w-full bg-green-500 text-white py-3 rounded-lg"
-          >
-            Signup
-          </button>
+            {isLoginView
+              ? "New here? Create an account"
+              : "Already have an account? Login"}
+          </span>
         </div>
       </div>
     );
   }
 
-  // 📊 DASHBOARD UI
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 text-white px-4 py-2 rounded"
+    <div style={{ backgroundColor: "#f4f7f6", minHeight: "100vh" }}>
+      <div style={styles.dashboard}>
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "30px",
+          }}
         >
-          Logout
-        </button>
-      </div>
+          <h1>Team Manager</h1>
+          <button
+            onClick={logout}
+            style={{
+              ...styles.button,
+              width: "auto",
+              backgroundColor: "#dc3545",
+            }}
+          >
+            Logout
+          </button>
+        </header>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="bg-white p-4 rounded shadow">
-          <h3>Total</h3>
-          <p className="text-xl font-bold">{total}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded shadow">
-          <h3>Completed</h3>
-          <p className="text-xl font-bold text-green-500">{completed}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded shadow">
-          <h3>Pending</h3>
-          <p className="text-xl font-bold text-red-500">{pending}</p>
-        </div>
-      </div>
-
-      {/* Filter */}
-      <div className="mb-4">
-        <button onClick={() => setFilter("all")} className="mr-2">
-          All
-        </button>
-        <button onClick={() => setFilter("todo")} className="mr-2">
-          Todo
-        </button>
-        <button onClick={() => setFilter("done")}>Done</button>
-      </div>
-
-      {/* Create Task */}
-      <div className="mb-4 flex gap-2">
-        <select
-          value={assignedTo}
-          onChange={(e) => setAssignedTo(e.target.value)}
-          className="border p-2 rounded"
+        <section
+          style={{
+            ...styles.card,
+            maxWidth: "none",
+            textAlign: "left",
+            marginBottom: "30px",
+          }}
         >
-          <option value="">Assign User</option>
-          {users.map((u) => (
-            <option key={u._id} value={u._id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+          <h3>Assign New Task</h3>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <input
+              placeholder="What needs to be done?"
+              style={{ ...styles.input, flex: 2, marginBottom: 0 }}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <select
+              style={{ ...styles.input, flex: 1, marginBottom: 0 }}
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+            >
+              <option value="">Assign To</option>
+              {users?.map((u) => (
+                <option key={u._id} value={u._id}>
+                  {u.name || u.email}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={async () => {
+                if (!title) return alert("Title is required");
+                const user = JSON.parse(localStorage.getItem("user"));
+                await API.post("/tasks", {
+                  title,
+                  assignedTo: assignedTo || user.id,
+                });
+                setTitle("");
+                fetchTasks();
+              }}
+              style={{ ...styles.button, width: "auto" }}
+            >
+              Add
+            </button>
+          </div>
+        </section>
 
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter task"
-          className="border p-2 rounded w-full"
-        />
-
-        <button
-          onClick={createTask}
-          className="bg-blue-500 text-white px-4 rounded"
-        >
-          Add
-        </button>
-      </div>
-
-      {/* Task List */}
-      <div className="grid gap-3">
-        {filteredTasks.map((task) => (
-          <div key={task._id} className="bg-white p-3 rounded shadow">
-            <h2 className="font-semibold">{task.title}</h2>
-
-            <p>Status: {task.status}</p>
-
-            <p>Assigned: {task.assignedTo?.name || "Unassigned"}</p>
-
-            <div className="flex gap-2 mt-2">
-              {task.status !== "done" && (
+        <section>
+          <h3>Active Tasks</h3>
+          {tasks.length > 0 ? (
+            tasks.map((t) => (
+              <div key={t._id} style={styles.taskItem}>
+                <div>
+                  <strong style={{ fontSize: "1.1rem" }}>{t.title}</strong>
+                  <p
+                    style={{
+                      margin: "5px 0 0",
+                      color: "#666",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    Status: {t.status}
+                  </p>
+                </div>
                 <button
-                  onClick={() => updateStatus(task._id)}
-                  className="bg-green-500 text-white px-3 py-1 rounded"
+                  onClick={async () => {
+                    await API.delete(`/tasks/${t._id}`);
+                    fetchTasks();
+                  }}
+                  style={{
+                    ...styles.button,
+                    width: "auto",
+                    backgroundColor: "#ffc107",
+                    color: "#000",
+                  }}
                 >
                   Done
                 </button>
-              )}
-
-              <button
-                onClick={() => deleteTask(task._id)}
-                className="bg-red-500 text-white px-3 py-1 rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+              </div>
+            ))
+          ) : (
+            <p>All clear! No tasks found.</p>
+          )}
+        </section>
       </div>
     </div>
   );
