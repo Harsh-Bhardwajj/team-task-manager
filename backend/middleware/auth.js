@@ -1,19 +1,24 @@
 import jwt from "jsonwebtoken";
 
-// 🔐 Protect route (login required)
+// 🔐 Protect route
 export const protect = (req, res, next) => {
-  const token = req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
+  if (!authHeader) {
     return res.status(401).json({ msg: "No token, access denied" });
   }
 
+  // ✅ Bearer token split
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.split(" ")[1]
+    : authHeader;
+
   try {
-    const decoded = jwt.verify(token, "secret123");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret123");
     req.user = decoded;
     next();
   } catch (err) {
-    res.status(401).json({ msg: "Invalid token" });
+    return res.status(401).json({ msg: "Invalid token" });
   }
 };
 

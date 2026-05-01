@@ -11,16 +11,8 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS FIX (ENOUGH)
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
-
-// middleware
+// ✅ CORS (simple and working)
+app.use(cors());
 app.use(express.json());
 
 // routes
@@ -28,7 +20,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/users", userRoutes);
 
-// test route
+// test
 app.get("/", (req, res) => {
   res.send("API running 🚀");
 });
@@ -37,20 +29,14 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI missing ❌");
-    }
-
     await mongoose.connect(process.env.MONGO_URI);
-
     console.log("MongoDB connected ✅");
 
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on port ${PORT} 🚀`);
+      console.log(`Server running on ${PORT}`);
     });
   } catch (err) {
-    console.error("Server failed ❌:", err.message);
-    process.exit(1);
+    console.log(err.message);
   }
 };
 
