@@ -14,26 +14,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// user routes
-app.use("/api/users", userRoutes);
-
 // routes
 app.use("/api/auth", authRoutes);
-// task routes
 app.use("/api/tasks", taskRoutes);
+app.use("/api/users", userRoutes);
+
 // test route
 app.get("/", (req, res) => {
   res.send("API running 🚀");
 });
 
-// DB connect
+// ✅ PORT fix (Railway compatible)
+const PORT = process.env.PORT || 5000;
+
+// ✅ MongoDB from ENV (VERY IMPORTANT)
 mongoose
-  .connect("mongodb://127.0.0.1:27017/taskmanager")
+  .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
-
-    app.listen(5000, () => {
-      console.log("Server running on port 5000");
-    });
   })
   .catch((err) => console.log(err));
+
+// ✅ server start (IMPORTANT change)
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+});
